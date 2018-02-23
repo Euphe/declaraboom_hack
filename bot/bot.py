@@ -2,7 +2,7 @@ import logging
 from .queries import get_query_list, run_query, QueryFailureError, get_declarator_persons
 from telegram.ext import Updater, CommandHandler, ConversationHandler, RegexHandler
 from telegram import ReplyKeyboardMarkup
-
+from .utils import prettify as pr
 logger = logging.getLogger(__name__)
 
 
@@ -77,7 +77,7 @@ def arg_input_callback(bot, update, user_data):
     update.message.reply_text(text)
     try:
         query_result, collisions = run_query(user_data['query_method'], user_data['person'])
-    except QueryFailureError:
+    except QueryFailureError as e:
         update.message.reply_text(f'Произошла ошибка при обработке запроса:\n{e}')
         return ConversationHandler.END
     update.message.reply_text(query_result)
@@ -108,9 +108,8 @@ def search_callback(bot, update, user_data=None, args=None):
         update.message.reply_text("Нужно ввести как минимум фамилию и имя для начала поиска.\nНапример:\n`/search путин владимир владимирович`")
         return
     update.message.reply_text(f'Ищу "{" ".join(args)}"')
-    words = args
-    name, position = ' '.join(words[:3]),' '.join(words[3:])
-
+    words = [pr(w) for w in args]
+    name, position = ' '.join(words[:3]), ' '.join(words[3:])
     persons = get_declarator_persons(name, position, full_output=False)
 
     if not persons:
@@ -121,7 +120,7 @@ def search_callback(bot, update, user_data=None, args=None):
             data.append(f'{person["name"]} {person["position"]}')
 
         update.message.reply_text('Я нашел таких людей подходящих под запрос:\n' + '\n'.join(data))
-        keyboard = [[f'/search {person["name"]} {person["position"][0:30]}'] for person in persons]
+        keyboard = [[f'/search {person["name"]} {person["position"][0:40]}'] for person in persons]
         markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True)
         update.message.reply_text('Выбери одного из них', reply_markup=markup)
     else:

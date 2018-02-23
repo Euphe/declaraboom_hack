@@ -1,6 +1,5 @@
 import requests
-import logging
-
+from ..utils import prettify as pr
 
 class QueryFailureError(Exception):
     pass
@@ -11,11 +10,10 @@ def get_declarator_persons(name, position=None, full_output = False):
     url = f'https://declarator.org/api/v1/search/person-sections/?name={"%20".join(name.split(" "))}'
     response = requests.get(url).json()
     for person in response['results']:
-        logging.getLogger().info(sorted(person['name'].lower().split(' ')), sorted(name.lower().split(' ')))
-        word_set_name = set(name.lower().strip().split(' '))
-        word_set_person_name = set(person['name'].lower().split(' '))
+        word_set_name = set(pr(name).split(' '))
+        word_set_person_name = set(pr(person['name']).split(' '))
         if word_set_person_name.intersection(word_set_name):
-            if position and (not person['sections'] or not position in person['sections'][0]['position'].lower().strip()):
+            if position and (not person['sections'] or position not in pr(person['sections'][0]['position'])):
                 continue
             if full_output:
                 persons.append(person)
