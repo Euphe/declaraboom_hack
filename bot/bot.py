@@ -6,7 +6,7 @@ from telegram import ReplyKeyboardMarkup
 logger = logging.getLogger(__name__)
 
 
-NAME_INPUT, ARG_INPUT, VOTE, SEARCH = range(4)
+QUERY_START, ARG_INPUT, VOTE, SEARCH = range(4)
 
 
 class Bot:
@@ -53,12 +53,15 @@ def start_callback(bot, update, *args, **kwargs):
 
 
 def query_callback(bot, update, user_data=None, *args, **kwargs):
-    if user_data:
-        user_data.clear()
-    text = 'Введи ФИО человека, например `Иванов Иван Иванович`'
-
-    update.message.reply_text(text)
-    return NAME_INPUT
+    if not 'person' in user_data or not user_data['person']:
+        update.message.reply_text('Выбери цель через `/search`, потом приходи сюда.')
+        return ConversationHandler.END
+    queries = ", ".join(get_query_list())
+    text = f'Твоя цель: {user_data["person"]["name"]}.\nВыбери, что ты хочешь искать.\nДоступные запросы: {queries}'
+    keyboard = [[x] for x in get_query_list()]
+    markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True)
+    update.message.reply_text(text, reply_markup=markup)
+    return ARG_INPUT
 
 
 def cancel_callback(bot, update, user_data):
@@ -68,20 +71,12 @@ def cancel_callback(bot, update, user_data):
     return ConversationHandler.END
 
 
-def name_input_callback(bot, update, user_data):
-    user_data['query_text'] = update.message.text
-    queries = ", ".join(get_query_list())
-    text= f'Отлично, теперь введи что хочешь искать.\nДоступные запросы: {queries}'
-    update.message.reply_text(text)
-    return ARG_INPUT
-
-
 def arg_input_callback(bot, update, user_data):
     user_data['query_method'] = update.message.text
-    text= 'Поищу...'
+    text= 'Ищу...'
     update.message.reply_text(text)
     try:
-        query_result, collisions = run_query(user_data['query_method'], user_data['query_text'])
+        query_result, collisions = run_query(user_data['query_method'], user_data['person']['name'])
     except QueryFailureError:
         update.message.reply_text(f'Произошла ошибка при обработке запроса:\n{e}')
         return ConversationHandler.END
@@ -110,7 +105,8 @@ def vote_callback(bot, update, user_data):
 
 def search_callback(bot, update, user_data=None, args=None):
     if not args or len(args) < 2:
-        update.message.reply_text("Нужно ввести как минимум два слова: фамилию и имя")
+        update.message.reply_text("Нужно ввести как минимум фамилию и имя для начала поиска.\nНапример:\n`/search путин владимир владимирович`")
+        return
     update.message.reply_text(f'Ищу "{" ".join(args)}"')
     words = args
     name, position = ' '.join(words[:3]),' '.join(words[3:])
@@ -125,15 +121,16 @@ def search_callback(bot, update, user_data=None, args=None):
             data.append(f'{person["name"]} {person["position"]}')
 
         update.message.reply_text('Я нашел таких людей подходящих под запрос:\n' + '\n'.join(data))
-        keyboard = [[f'/search {person["name"]} {person["position"]}'] for person in persons]
+        keyboard = [[f'/search {person["name"]} {person["position"][0:30]}'] for person in persons]
         markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True)
         update.message.reply_text('Выбери одного из них', reply_markup=markup)
     else:
         person = persons[0]
         user_data['person'] = person
-        update.message.reply_text(f'Теперь твой покемон: {person["name"]} {person["position"]}. Иди разузнай про него что-то через /query')
-        return ARG_INPUT
+        update.message.reply_text(f'Теперь твоя цель: {person["name"]} {person["position"]}.\Разузнай про него что-то через /query')
+        return QUERY_START
     return ConversationHandler.END
+
 
 def make_conversation_handler():
     query_list = get_query_list()
@@ -155,7 +152,7 @@ def make_conversation_handler():
         ],
 
         states={
-            NAME_INPUT: [RegexHandler(r'^(?u)\w+\s\w+\s\w+$', name_input_callback, pass_user_data=True)],
+            QUERY_START: [RegexHandler(r'^(?u)\w+\s\w+\s\w+$', query_callback, pass_user_data=True)],
             ARG_INPUT: query_handlers,
             VOTE: [RegexHandler(r'^(?ui)[0-9]$', vote_callback, pass_user_data=True)],
             SEARCH: [CommandHandler('search', search_callback, pass_user_data=True)]
