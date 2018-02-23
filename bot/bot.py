@@ -1,9 +1,12 @@
 import logging
-from .query import query
+from .queries import get_query_list, run_query, QueryFailureError
 from telegram.ext import Updater, CommandHandler, ConversationHandler, RegexHandler
 
 
 logger = logging.getLogger(__name__)
+
+
+NAME_INPUT, ARG_INPUT, VOTE = range(3)
 
 
 class Bot:
@@ -61,7 +64,8 @@ def cancel_callback(bot, update, user_data):
 
 def name_input_callback(bot, update, user_data):
     user_data['query_text'] = update.message.text
-    text= 'Отлично, теперь введи что хочешь искать. Например "инн"'
+    queries = ", ".join(get_query_list())
+    text= f'Отлично, теперь введи что хочешь искать.\nДоступные запросы: {queries}'
     update.message.reply_text(text)
     return ARG_INPUT
 
@@ -70,25 +74,20 @@ def arg_input_callback(bot, update, user_data):
     text= 'Поищу...'
     update.message.reply_text(text)
     try:
-        query_result, collisions = query(user_data['query_method'], user_data['query_text'])
-
-        update.message.reply_text(query_result)
-
-        data = []
-        if collisions:
-            data.append('\n\n')
-            data.append('Найдены следующие возможные ИНН для данного имени:')
-
-        for i, collision in enumerate(collisions):
-            data.append(f'{i+1}. {collision["inn"]}')
-
-        if data:
-            update.message.reply_text('\n'.join(data))
-
-        update.message.reply_text('Напиши номер коллизии, которую ты считаешь истинной')
-    except Exception as e:
-        update.message.reply_text(f'Произошла ошибка при обработке запроса: "{e}"')
+        query_result, collisions = run_query(user_data['query_method'], user_data['query_text'])
+    except QueryFailureError:
+        update.message.reply_text(f'Произошла ошибка при обработке запроса:\n{e}')
         return ConversationHandler.END
+    update.message.reply_text(query_result)
+
+    data = []
+    for i, collision in enumerate(collisions):
+        data.append(f'{i+1}. {collision["description"]}')
+
+    if data:
+        update.message.reply_text('\n'.join(data))
+
+    update.message.reply_text('Напиши номер коллизии, которую ты считаешь истинной.\nНапиши 0, если они все неверны.')
     return VOTE
 
 def vote_callback(bot, update, user_data):
@@ -100,33 +99,37 @@ def vote_callback(bot, update, user_data):
     update.message.reply_text(text)
     return ConversationHandler.END
 
-NAME_INPUT, ARG_INPUT, VOTE = range(3)
+
 def make_conversation_handler():
+    query_list = get_query_list()
+    query_handlers = [ RegexHandler(f'^(?u){query}', arg_input_callback, pass_user_data=True) for query in query_list ]
+
+    command_handlers = [
+        ('help', help_callback),
+        ('cancel', cancel_callback),
+        ('query', query_callback)
+    ]
+    fallbacks = [ CommandHandler(command, handler, pass_user_data=True) for command, handler in command_handlers]
+
+    fallbacks.append(RegexHandler(r'.+', not_recognized_callback, pass_user_data=True))
     query_conversation_handler = ConversationHandler(
-        entry_points=[CommandHandler('query', query_callback, pass_user_data=True)],
+        entry_points=[
+            CommandHandler('start', start_callback, pass_user_data=True),
+            CommandHandler('query', query_callback, pass_user_data=True),
+        ],
 
         states={
             NAME_INPUT: [RegexHandler(r'^(?u)\w+\s\w+\s\w+$', name_input_callback, pass_user_data=True)],
-            ARG_INPUT: [RegexHandler(r'^(?u)инн$', arg_input_callback, pass_user_data=True)],
+            ARG_INPUT: query_handlers,
             VOTE: [RegexHandler(r'^(?ui)[0-9]$', vote_callback, pass_user_data=True)],
         },
 
-        fallbacks=[
-            RegexHandler('.+', not_recognized_callback, pass_user_data=True),
-        ]
+        fallbacks=fallbacks
     )
     return query_conversation_handler
 
 def create_bot(api_key):
     bot = Bot(api_key)
-
-    command_handlers = [
-        ('start', start_callback),
-        ('help', help_callback),
-        ('cancel', cancel_callback),
-        ('query', query_callback)
-    ]
-    bot.add_command_handlers(command_handlers)
 
     conversation_handlers = [
         make_conversation_handler(),

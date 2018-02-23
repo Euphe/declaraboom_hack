@@ -1,27 +1,20 @@
 import requests
 from bs4 import BeautifulSoup
+from .common import get_declarator_data, QueryFailureError
+from ..utils import only_digits
 
-def remove_letters(text):
-    return "".join(_ for _ in text if _ in ".1234567890")
 
-def get_declarator_data(name):
-    data = [ ]
-    url = f'https://declarator.org/api/v1/search/person-sections/?name={"%20".join(name.split(" "))}'
-    response = requests.get(url).json()
-    if not response and not response['results']:
-        return None
+def get_collisions(name, data):
+    collisions = []
+    for thing in data:
+        if not thing['inn'] in [x['inn'] for x in collisions]:
+            collisions.append({
+                'person': name,
+                'inn': thing['inn'],
+                'description': f'ИНН {thing["inn"]}'
+            })
+    return collisions
 
-    person_declarations = []
-    for declaration in response['results']:
-        if declaration['name'].lower() == name.lower():
-            person_declarations.append(declaration)
-    if not person_declarations:
-        return None
-
-    data.append(f'Найдено {len(person_declarations)} деклараций этого человека в Деклараторе.')
-    data.append(f'Запрос: {url}')
-
-    return '\n'.join(data)
 
 def get_ip_data(name, results_ul):
     ips = []
@@ -33,7 +26,7 @@ def get_ip_data(name, results_ul):
         if inn:
             inn = inn.find_all('div', {'class': 'u-reqline'})
             if inn:
-                inn = remove_letters(inn[1].get_text())
+                inn = only_digits(inn[1].get_text())
 
         link = child.find('a', {'class': "u-name"})
         if link:
@@ -51,7 +44,7 @@ def get_company_data(name, results_ul):
         subceo = soup.find('span', {'class': 'subceo'})
         inn = None
         if subceo:
-            inn = remove_letters(subceo.get_text())
+            inn = only_digits(subceo.get_text())
         return {'inn': inn}
 
     companies = []
@@ -88,6 +81,7 @@ def get_company_data(name, results_ul):
         companies.append(company)
     return companies
 
+
 def get_rusprofile_data(name):
     data = []
 
@@ -107,57 +101,31 @@ def get_rusprofile_data(name):
             companies = get_company_data(name, results_ul)
 
     if companies:
-        data.append(f'В rusprofile найдено {len(companies)} юрлиц, где числится этот человек.\n')
-
-    if ips:
+        data.append(f'В rusprofile найдено {len(companies)} юрлиц, где числится этот человек.')
         data.append('')
-        data.append(f'В rusprofile найдено {len(ips)} ИП, с такими именами.\n')
-
-    def get_collisions(name, data):
-        collisions = []
-        for thing in data:
-            if not thing['inn'] in [x['inn'] for x in collisions]:
-                collisions.append({
-                    'person': name,
-                    'inn': thing['inn'],
-                })
-        return collisions
-
     for company in companies:
         data.append(f'Название: {company["name"]}, адрес: {company["address"]}, ссылка: {company["link"]}, инн владельца: {company["inn"]}')
+        data.append('')
+    if ips:
+        data.append(f'В rusprofile найдено {len(ips)} ИП, с такими именами.')
     for ip in ips:
         data.append(f'ИНН: {ip["inn"]}, ссылка: {ip["link"]}')
 
     collisions = get_collisions(name, companies + ips)
-
     return '\n'.join(data), collisions
 
 
 def inn_query(name):
-    query_results = [ ]
+    """Returns a log of query process and a list of collisions"""
+    query_results = []
 
     declarator_data = get_declarator_data(name)
 
     if not declarator_data:
-        raise(Exception(f'Я не нашел в деклараторе данные про "{name}"'))
+        raise(QueryFailureError(f'Я не нашел в деклараторе данные про "{name}"'))
     query_results.append(declarator_data)
     query_results.append('')
     rusprofile_data, collisions = get_rusprofile_data(name)
     if rusprofile_data:
         query_results.append(rusprofile_data)
     return '\n'.join(query_results), collisions
-
-
-queries = {
-    "инн": inn_query,
-}
-
-
-def query(method, text):
-    method = method.lower().strip()
-    text = text.lower().strip()
-    query_function = queries.get(method)
-    if not query_function:
-        raise(Exception(f'Не знаю как искать {method}'))
-    query_response, collisions = query_function(text)
-    return query_response, collisions
