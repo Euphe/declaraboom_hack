@@ -62,11 +62,22 @@ def arg_input_callback(bot, update, user_data):
     text= 'Поищу...'
     update.message.reply_text(text)
     try:
-        query_result = query(user_data['query_method'], user_data['query_text'])
+        query_result, collisions = query(user_data['query_method'], user_data['query_text'])
 
         update.message.reply_text(query_result)
 
-        update.message.reply_text('Ты считаешь это значимая коллизия?')
+        data = []
+        if collisions:
+            data.append('\n\n')
+            data.append('Найдены следующие возможные ИНН для данного имени:')
+
+        for i, collision in enumerate(collisions):
+            data.append(f'{i+1}. {collision["inn"]}')
+
+        if data:
+            update.message.reply_text('\n'.join(data))
+
+        update.message.reply_text('Напиши номер коллизии, которую ты считаешь истинной')
     except Exception as e:
         update.message.reply_text(f'Произошла ошибка при обработке запроса: "{e}"')
         raise
@@ -78,7 +89,7 @@ def vote_callback(bot, update, user_data):
     import random
     votes_total = random.randint(0, 50)
     percentage_for = random.randint(0, 100)
-    text = f'Спасибо за твой голос!\n{percentage_for}% проголсоовали "ЗА" (из {votes_total} голосов)'
+    text = f'Спасибо за твой голос!\n{percentage_for}% проголсоовали так же (из {votes_total} голосов)'
     update.message.reply_text(text)
     return ConversationHandler.END
 
@@ -88,12 +99,15 @@ query_conversation_handler = ConversationHandler(
 
     states={
         NAME_INPUT: [RegexHandler(r'(?u)\w+\s\w+\s\w+', name_input_callback, pass_user_data=True)],
-        ARG_INPUT: [RegexHandler(r'(?u)\w+', arg_input_callback, pass_user_data=True)],
-        VOTE: [RegexHandler(r'(?ui)(да|нет)', vote_callback, pass_user_data=True)],
+        ARG_INPUT: [RegexHandler(r'(?u)инн', arg_input_callback, pass_user_data=True)],
+        VOTE: [RegexHandler(r'(?ui).+', vote_callback, pass_user_data=True)],
 
     },
 
-    fallbacks=[RegexHandler('^отмена$', cancel_callback, pass_user_data=True)]
+    fallbacks=[
+        RegexHandler('^отмена$', cancel_callback, pass_user_data=True),
+        CommandHandler('cancel', query_command_callback, pass_user_data=True)
+    ]
 )
 
 

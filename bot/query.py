@@ -49,10 +49,10 @@ def get_company_data(name, results_ul):
         content = requests.get(url).text
         soup = BeautifulSoup(content, 'html.parser')
         subceo = soup.find('span', {'class': 'subceo'})
-        ceo_inn = None
+        inn = None
         if subceo:
-            ceo_inn = remove_letters(subceo.get_text())
-        return {'ceo_inn': ceo_inn}
+            inn = remove_letters(subceo.get_text())
+        return {'inn': inn}
 
     companies = []
 
@@ -78,12 +78,12 @@ def get_company_data(name, results_ul):
 
         company_data = parse_company(link)
 
-        ceo_inn = company_data['ceo_inn']
+        inn = company_data['inn']
         company = {
             'link': link,
             'name': name,
             'address': address,
-            'ceo_inn': ceo_inn
+            'inn': inn
         }
         companies.append(company)
     return companies
@@ -109,16 +109,28 @@ def get_rusprofile_data(name):
     if companies:
         data.append(f'В rusprofile найдено {len(companies)} юрлиц, где числится этот человек.\n')
 
-    for company in companies:
-        data.append(f'Название: {company["name"]}, адрес: {company["address"]}, ссылка: {company["link"]}, инн владельца: {company["ceo_inn"]}')
-
     if ips:
         data.append('')
         data.append(f'В rusprofile найдено {len(ips)} ИП, с такими именами.\n')
 
+    def get_collisions(name, data):
+        collisions = []
+        for thing in data:
+            if not thing['inn'] in [x['inn'] for x in collisions]:
+                collisions.append({
+                    'person': name,
+                    'inn': thing['inn'],
+                })
+        return collisions
+
+    for company in companies:
+        data.append(f'Название: {company["name"]}, адрес: {company["address"]}, ссылка: {company["link"]}, инн владельца: {company["inn"]}')
     for ip in ips:
         data.append(f'ИНН: {ip["inn"]}, ссылка: {ip["link"]}')
-    return '\n'.join(data)
+
+    collisions = get_collisions(name, companies + ips)
+
+    return '\n'.join(data), collisions
 
 
 def inn_query(name):
@@ -130,7 +142,7 @@ def inn_query(name):
         raise(Exception(f'Я не нашел в деклараторе данные про "{name}"'))
     query_results.append(declarator_data)
     query_results.append('')
-    rusprofile_data = get_rusprofile_data(name)
+    rusprofile_data, collisions = get_rusprofile_data(name)
     if rusprofile_data:
         query_results.append(rusprofile_data)
     return '\n'.join(query_results)
