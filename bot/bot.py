@@ -69,6 +69,8 @@ def arg_input_callback(bot, update, user_data):
         update.message.reply_text('Ты считаешь это значимая коллизия?')
     except Exception as e:
         update.message.reply_text(f'Произошла ошибка при обработке запроса: "{e}"')
+        raise
+        return ConversationHandler.END
     return VOTE
 
 def vote_callback(bot, update, user_data):

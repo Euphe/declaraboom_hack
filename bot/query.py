@@ -23,8 +23,27 @@ def get_declarator_data(name):
 
     return '\n'.join(data)
 
-def get_rusprofile_data(name):
-    data = []
+def get_ip_data(name, results_ul):
+    ips = []
+
+    results_entries = results_ul.find_all('li')
+
+    for child in results_entries:
+        inn = child.find('div', {'class': "u-requisites"})
+        if inn:
+            inn = inn.find_all('div', {'class': 'u-reqline'})
+            if inn:
+                inn = remove_letters(inn[1].get_text())
+
+        link = child.find('a', {'class': "u-name"})
+        if link:
+            link = 'http://www.rusprofile.ru' + link.get('href')
+
+        ips.append({'inn': inn, 'link': link})
+    return ips
+
+
+def get_company_data(name, results_ul):
 
     def parse_company(url):
         content = requests.get(url).text
@@ -35,15 +54,7 @@ def get_rusprofile_data(name):
             ceo_inn = remove_letters(subceo.get_text())
         return {'ceo_inn': ceo_inn}
 
-    url = 'http://www.rusprofile.ru/search?query=' + "+".join(name.split(" "))
-    content = requests.get(url).text
-    soup = BeautifulSoup(content, 'html.parser')
-
-    results_ul = soup.find('div', {"class": "search-results"}).find('ul')
-
-    companies = [
-
-    ]
+    companies = []
 
     results_entries = results_ul.find_all('li')
 
@@ -75,6 +86,25 @@ def get_rusprofile_data(name):
             'ceo_inn': ceo_inn
         }
         companies.append(company)
+    return companies
+
+def get_rusprofile_data(name):
+    data = []
+
+    url = 'http://www.rusprofile.ru/search?query=' + "+".join(name.split(" "))
+    content = requests.get(url).text
+    soup = BeautifulSoup(content, 'html.parser')
+
+    results =  soup.find_all('div', {"class": "search-results"})
+
+    companies = []
+    ips = []
+    for results_div in results:
+        results_ul = results_div.find('ul')
+        if results_div.get('class') and 'fiz' in results_div.get('class'):
+            ips = get_ip_data(name, results_ul)
+        else:
+            companies = get_company_data(name, results_ul)
 
     if companies:
         data.append(f'В rusprofile найдено {len(companies)} юрлиц, где числится этот человек.\n')
@@ -82,6 +112,12 @@ def get_rusprofile_data(name):
     for company in companies:
         data.append(f'Название: {company["name"]}, адрес: {company["address"]}, ссылка: {company["link"]}, инн владельца: {company["ceo_inn"]}')
 
+    if ips:
+        data.append('')
+        data.append(f'В rusprofile найдено {len(ips)} ИП, с такими именами.\n')
+
+    for ip in ips:
+        data.append(f'ИНН: {ip["inn"]}, ссылка: {ip["link"]}')
     return '\n'.join(data)
 
 
