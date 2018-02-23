@@ -1,4 +1,4 @@
-from .common import QueryFailureError
+from .common import QueryFailureError, get_declarator_persons
 from .inn import inn_query
 
 queries = {
