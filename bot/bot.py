@@ -43,12 +43,12 @@ def not_recognized_callback(bot, update, *args, **kwargs):
 
 
 def help_callback(bot, update, *args, **kwargs):
-    text = "/query осуществляет поисковый запрос, бот всё объяснит.\n/cancel или текст \"отмена\" сбрасывает текущий запрос."
+    text = "Сначала через /search выбери человека, для которого собираешься искать. Затем ищи информацию черещ /query.\n/cancel сбрасывает всё, если что."
     update.message.reply_text(text)
 
 
 def start_callback(bot, update, *args, **kwargs):
-    start_text = 'Привет! Я бот с хакатона Декларабум.\nЕсли запутаешься пиши /help.\nСкорее всего тебе нужна команда /query'
+    start_text = 'Привет! Я бот с хакатона Декларабум.\nЕсли что пиши /help.\nСкорее всего тебе нужна команда /search'
     update.message.reply_text(start_text)
 
 
