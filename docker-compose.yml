@@ -1,0 +1,21 @@
+version: "3"
+services:
+  bot:
+    build: .
+    image: bot:latest
+    ports:
+      - 8000:80
+    volumes:
+      - '.:/src'
+  mongo:
+    image: mongo
+    container_name: mongo
+    restart: always
+    command: mongod --journal --bind_ip 0.0.0.0
+    environment:
+      TZ: 'Europe/Moscow'
+      SERVICE_TAGS: 'app'
+    volumes:
+      - "./mongo/data/db:/data/db"
+    ports:
+      - "0.0.0.0:27017:27017"
