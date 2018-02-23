@@ -146,6 +146,7 @@ def make_conversation_handler():
     query_conversation_handler = ConversationHandler(
         entry_points=[
             CommandHandler('start', start_callback, pass_user_data=True),
+            CommandHandler('help', help_callback),
             CommandHandler('query', query_callback, pass_user_data=True),
             CommandHandler('search', search_callback, pass_user_data=True, pass_args=True),
         ],
