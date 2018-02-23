@@ -76,7 +76,7 @@ def arg_input_callback(bot, update, user_data):
     text= 'Ищу...'
     update.message.reply_text(text)
     try:
-        query_result, collisions = run_query(user_data['query_method'], user_data['person']['name'])
+        query_result, collisions = run_query(user_data['query_method'], user_data['person'])
     except QueryFailureError:
         update.message.reply_text(f'Произошла ошибка при обработке запроса:\n{e}')
         return ConversationHandler.END
@@ -127,7 +127,7 @@ def search_callback(bot, update, user_data=None, args=None):
     else:
         person = persons[0]
         user_data['person'] = person
-        update.message.reply_text(f'Теперь твоя цель: {person["name"]} {person["position"]}.\Разузнай про него что-то через /query')
+        update.message.reply_text(f'Теперь твоя цель: {person["name"]} {person["position"]}.\nРазузнай про него что-то через /query')
         return QUERY_START
     return ConversationHandler.END
 

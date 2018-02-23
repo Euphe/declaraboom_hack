@@ -115,11 +115,12 @@ def get_rusprofile_data(name):
     return '\n'.join(data), collisions
 
 
-def inn_query(name):
+def inn_query(person):
     """Returns a log of query process and a list of collisions"""
     query_results = []
-
-    declarator_data = get_declarator_data(name)
+    name = person["name"]
+    position = person["position"]
+    declarator_data = get_declarator_data(name, position=position)
 
     if not declarator_data:
         raise(QueryFailureError(f'Я не нашел в деклараторе данные про "{name}"'))
