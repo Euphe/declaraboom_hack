@@ -18,7 +18,7 @@ class Bot:
 
     def add_command_handlers(self, command_handlers):
         for command, handler in command_handlers:
-            self.updater.dispatcher.add_handler(CommandHandler(command, handler))
+            self.updater.dispatcher.add_handler(CommandHandler(command, handler, pass_user_data=True))
 
     def add_conversation_handlers(self, handlers):
         for handler in handlers:
@@ -33,13 +33,21 @@ class Bot:
         """Log Errors caused by Updates."""
         logger.warning('Update "%s" caused error "%s"', update, error)
 
+def not_recognized_callback(bot, update, *args, **kwargs):
+    text = "Я не понял тебя. Попробуй ещё раз или введи /cancel и начни заново."
+    update.message.reply_text(text)
 
+def help_callback(bot, update, *args, **kwargs):
+    text = "/query осуществляет поисковый запрос, бот всё объяснит.\n/cancel или текст \"отмена\" сбрасывает текущий запрос."
+    update.message.reply_text(text)
 
-def start_command_callback(bot, update):
-    start_text = 'Привет! Я бот с хакатона Декларабум. Тебе нужна команда /query'
+def start_callback(bot, update, *args, **kwargs):
+    start_text = 'Привет! Я бот с хакатона Декларабум.\nЕсли запутаешься пиши /help.\nСкорее всего тебе нужна команда /query'
     update.message.reply_text(start_text)
 
-def query_command_callback(bot, update, user_data):
+def query_callback(bot, update, user_data=None, *args, **kwargs):
+    if user_data:
+        user_data.clear()
     text = 'Введи ФИО человека, например `Иванов Иван Иванович`'
 
     update.message.reply_text(text)
@@ -93,33 +101,35 @@ def vote_callback(bot, update, user_data):
     return ConversationHandler.END
 
 NAME_INPUT, ARG_INPUT, VOTE = range(3)
-query_conversation_handler = ConversationHandler(
-    entry_points=[CommandHandler('query', query_command_callback, pass_user_data=True)],
+def make_conversation_handler():
+    query_conversation_handler = ConversationHandler(
+        entry_points=[CommandHandler('query', query_callback, pass_user_data=True)],
 
-    states={
-        NAME_INPUT: [RegexHandler(r'(?u)\w+\s\w+\s\w+', name_input_callback, pass_user_data=True)],
-        ARG_INPUT: [RegexHandler(r'(?u)инн', arg_input_callback, pass_user_data=True)],
-        VOTE: [RegexHandler(r'(?ui).+', vote_callback, pass_user_data=True)],
+        states={
+            NAME_INPUT: [RegexHandler(r'^(?u)\w+\s\w+\s\w+$', name_input_callback, pass_user_data=True)],
+            ARG_INPUT: [RegexHandler(r'^(?u)инн$', arg_input_callback, pass_user_data=True)],
+            VOTE: [RegexHandler(r'^(?ui)[0-9]$', vote_callback, pass_user_data=True)],
+        },
 
-    },
-
-    fallbacks=[
-        RegexHandler('^отмена$', cancel_callback, pass_user_data=True),
-        CommandHandler('cancel', query_command_callback, pass_user_data=True)
-    ]
-)
-
+        fallbacks=[
+            RegexHandler('.+', not_recognized_callback, pass_user_data=True),
+        ]
+    )
+    return query_conversation_handler
 
 def create_bot(api_key):
     bot = Bot(api_key)
 
     command_handlers = [
-        ('start', start_command_callback)
+        ('start', start_callback),
+        ('help', help_callback),
+        ('cancel', cancel_callback),
+        ('query', query_callback)
     ]
     bot.add_command_handlers(command_handlers)
 
     conversation_handlers = [
-        query_conversation_handler
+        make_conversation_handler(),
     ]
     bot.add_conversation_handlers(conversation_handlers)
     return bot

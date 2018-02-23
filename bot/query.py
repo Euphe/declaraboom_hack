@@ -145,7 +145,7 @@ def inn_query(name):
     rusprofile_data, collisions = get_rusprofile_data(name)
     if rusprofile_data:
         query_results.append(rusprofile_data)
-    return '\n'.join(query_results)
+    return '\n'.join(query_results), collisions
 
 
 queries = {
@@ -159,4 +159,5 @@ def query(method, text):
     query_function = queries.get(method)
     if not query_function:
         raise(Exception(f'Не знаю как искать {method}'))
-    return query_function(text)
+    query_response, collisions = query_function(text)
+    return query_response, collisions
