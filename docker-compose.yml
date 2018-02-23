@@ -7,6 +7,8 @@ services:
       - 8000:80
     volumes:
       - '.:/src'
+    environment:
+      API_KEY: '534820315:AAHhiOAOnKW4Ml5yCymeJFhyaw21DgNhMMk'
   mongo:
     image: mongo
     container_name: mongo
@@ -19,3 +21,4 @@ services:
       - "./mongo/data/db:/data/db"
     ports:
       - "0.0.0.0:27017:27017"
+

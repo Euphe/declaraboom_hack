@@ -1,13 +1,17 @@
-from telegram.ext import Updater, CommandHandler
+import os
+import logging
+from .bot import create_bot
 
 
-def hello(bot, update):
-    update.message.reply_text(
-        'Hello {}'.format(update.message.from_user.first_name))
+def configure_logging():
+    # Enable logging
+    logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                        level=logging.DEBUG)
+def main():
+    configure_logging()
+    bot = create_bot(os.environ['API_KEY'])
 
-updater = Updater('534820315:AAHhiOAOnKW4Ml5yCymeJFhyaw21DgNhMMk')
+    bot.start()
 
-updater.dispatcher.add_handler(CommandHandler('hello', hello))
-
-updater.start_polling()
-updater.idle()
+if __name__ == '__main__':
+    main()
