@@ -7,5 +7,3 @@ services:
       - 8000:80
     volumes:
       - '.:/src'
-    environment:
-      API_KEY: '534820315:AAHhiOAOnKW4Ml5yCymeJFhyaw21DgNhMMk'
