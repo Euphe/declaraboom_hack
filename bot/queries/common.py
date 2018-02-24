@@ -16,6 +16,11 @@ def get_declarator_persons(name, position=None, full_output = False):
         word_set_name = set(pr(name).split(' '))
         word_set_person_name = set(pr(person['name']).split(' '))
         if word_set_person_name.intersection(word_set_name):
+            # print(name, position)
+            # if position and person['sections']:
+            #     print(url)
+            #     print(person)
+            #     print(position, pr(person['sections'][0]['position']))
             if position and (not person['sections'] or position not in pr(person['sections'][0]['position'])):
                 continue
             if full_output:

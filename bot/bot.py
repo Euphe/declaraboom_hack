@@ -108,8 +108,11 @@ def search_callback(bot, update, user_data=None, args=None):
         update.message.reply_text("Нужно ввести как минимум фамилию и имя для начала поиска.\nНапример:\n`/search путин владимир владимирович`")
         return
     update.message.reply_text(f'Ищу "{" ".join(args)}"')
-    words = [pr(w) for w in args]
+    args = pr(' '.join(args)).split(' ')
+    words = [w for w in args]
+    #print(words)
     name, position = ' '.join(words[:3]), ' '.join(words[3:])
+    #print(name, position)
     persons = get_declarator_persons(name, position, full_output=False)
 
     if not persons:

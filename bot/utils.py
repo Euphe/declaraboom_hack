@@ -108,6 +108,7 @@ def prettify(string):
     p = PRETTIFY_RE['UPPERCASE_AFTER_SIGN'].sub(uppercase_first_letter_after_sign, p)
     p = PRETTIFY_RE['SAXON_GENITIVE'].sub(fix_saxon_genitive, p)
     p = re.sub('['+PUNCTUATION+']', '', p)
+    p = re.sub(' +', ' ', p)
     p = p.strip().lower()
     try:
         return p[0] + p[1:]
