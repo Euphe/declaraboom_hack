@@ -1,5 +1,11 @@
 version: "3"
 services:
+  db:
+    image: postgres
+    environment:
+      POSTGRES_PASSWORD: pwd
+      POSTGRES_USER: user
+      POSTGRES_DB: db
   bot:
     build: .
     image: bot:latest
@@ -7,5 +13,7 @@ services:
       - 8000:80
     volumes:
       - '.:/src'
+    depends_on:
+      - db
     env_file:
-    - .env
+      - .env

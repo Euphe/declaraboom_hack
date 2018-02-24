@@ -1,11 +1,15 @@
+import os
 import logging
-from .queries import get_query_list, run_query, QueryFailureError, get_declarator_persons
+import sqlalchemy
 from telegram.ext import Updater, CommandHandler, ConversationHandler, RegexHandler
 from telegram import ReplyKeyboardMarkup
+from .queries import get_query_list, run_query, QueryFailureError, get_declarator_persons
 from .utils import prettify as pr
+from .db import init_db, get_session, close_session
+from .models import Vote
+
+
 logger = logging.getLogger(__name__)
-
-
 QUERY_START, ARG_INPUT, VOTE, SEARCH = range(4)
 
 
@@ -82,6 +86,7 @@ def arg_input_callback(bot, update, user_data):
         return ConversationHandler.END
     update.message.reply_text(query_result)
 
+    user_data['collision_options'] = collisions
     data = []
     for i, collision in enumerate(collisions):
         data.append(f'{i+1}. {collision["description"]}')
@@ -94,14 +99,46 @@ def arg_input_callback(bot, update, user_data):
     else:
         return ConversationHandler.END
 
-
+@close_session
 def vote_callback(bot, update, user_data):
-    user_data['vote'] = update.message.text
-    import random
-    votes_total = random.randint(0, 50)
-    percentage_for = random.randint(0, 100)
-    text = f'Спасибо за твой голос!\n{percentage_for}% проголсоовали так же (из {votes_total} голосов)'
-    update.message.reply_text(text)
+    vote_num = int(pr(update.message.text))
+    if vote_num != 0:
+        try:
+            user_data['vote'] = user_data['collision_options'][int(pr(update.message.text))-1]
+
+            session = get_session()
+            vote = Vote(
+                voter_id=update.message.from_user.id,
+                person_id=user_data["person"]["id"],
+                param=user_data["vote"]["param"],
+                param_value=user_data["vote"]['param_value']
+            )
+            session.add(vote)
+            try:
+                session.commit()
+                update.message.reply_text('Спасибо, твой голос добавлен!')
+            except sqlalchemy.exc.IntegrityError:
+                update.message.reply_text('Ты уже голосовал здесь, жми 0')
+                return
+
+        except (ValueError, TypeError):
+            update.message.reply_text('Введи номер коллизии или 0')
+            return
+    session = get_session()
+    param = user_data['collision_options'][0]['param']
+    votes = session.query(Vote).filter_by(person_id=user_data["person"]["id"], param=param).all()
+    for collision in user_data['collision_options']:
+        votes_for_collision = 0
+        for vote in votes:
+            if vote.param_value == collision["param_value"]:
+                votes_for_collision += 1
+        collision['votes'] = votes_for_collision
+
+    data = ['Текущие голоса:\n']
+    for i, collision in enumerate(user_data['collision_options']):
+        data.append(f'{i+1}. {collision["description"]}: {collision["votes"]}')
+
+    update.message.reply_text('\n'.join(data))
     return ConversationHandler.END
 
 
@@ -169,6 +206,8 @@ def make_conversation_handler():
 
 
 def create_bot(api_key):
+    init_db(os.environ['SQLALCHEMY_DATABASE_URI'])
+
     bot = Bot(api_key)
 
     conversation_handlers = [

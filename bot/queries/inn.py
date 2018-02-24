@@ -11,7 +11,9 @@ def get_collisions(name, data):
             collisions.append({
                 'person': name,
                 'inn': thing['inn'],
-                'description': f'ИНН {thing["inn"]}'
+                'description': f'ИНН {thing["inn"]}',
+                'param': 'inn',
+                'param_value': thing['inn'],
             })
     return collisions
 
@@ -126,7 +128,7 @@ def inn_query(person):
         raise(QueryFailureError(f'Я не нашел в деклараторе данные про "{name}"'))
     query_results.append(declarator_data)
     query_results.append('')
-    print(person)
+
     rusprofile_data, collisions = get_rusprofile_data(name)
     if rusprofile_data:
         query_results.append(rusprofile_data)
