@@ -88,9 +88,11 @@ def arg_input_callback(bot, update, user_data):
 
     if data:
         update.message.reply_text('\n'.join(data))
-
-    update.message.reply_text('Напиши номер коллизии, которую ты считаешь истинной.\nНапиши 0, если они все неверны.')
-    return VOTE
+    if collisions:
+        update.message.reply_text('Напиши номер коллизии, которую ты считаешь истинной.\nНапиши 0, если они все неверны.')
+        return VOTE
+    else:
+        return ConversationHandler.END
 
 
 def vote_callback(bot, update, user_data):

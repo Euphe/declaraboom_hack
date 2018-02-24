@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 from .common import get_declarator_data, QueryFailureError
-from ..utils import only_digits
+from ..utils import only_digits, prettify as pr
 
 
 def get_collisions(name, data):
@@ -118,14 +118,15 @@ def get_rusprofile_data(name):
 def inn_query(person):
     """Returns a log of query process and a list of collisions"""
     query_results = []
-    name = person["name"]
-    position = person["position"]
+    name = pr(person["name"])
+    position = pr(person["position"])
     declarator_data = get_declarator_data(name, position=position)
 
     if not declarator_data:
         raise(QueryFailureError(f'Я не нашел в деклараторе данные про "{name}"'))
     query_results.append(declarator_data)
     query_results.append('')
+    print(person)
     rusprofile_data, collisions = get_rusprofile_data(name)
     if rusprofile_data:
         query_results.append(rusprofile_data)
