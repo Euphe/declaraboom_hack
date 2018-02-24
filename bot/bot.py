@@ -72,7 +72,7 @@ def cancel_callback(bot, update, user_data):
 
 
 def arg_input_callback(bot, update, user_data):
-    user_data['query_method'] = update.message.text
+    user_data['query_method'] = pr(update.message.text)
     text= 'Ищу...'
     update.message.reply_text(text)
     try:

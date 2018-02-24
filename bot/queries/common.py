@@ -6,6 +6,9 @@ class QueryFailureError(Exception):
 
 
 def get_declarator_persons(name, position=None, full_output = False):
+    name = pr(name)
+    if position:
+        position = pr(position)
     persons = []
     url = f'https://declarator.org/api/v1/search/person-sections/?name={"%20".join(name.split(" "))}'
     response = requests.get(url).json()
