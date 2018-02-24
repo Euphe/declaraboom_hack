@@ -97,6 +97,7 @@ def arg_input_callback(bot, update, user_data):
         update.message.reply_text('Напиши номер коллизии, которую ты считаешь истинной.\nНапиши 0, если они все неверны.')
         return VOTE
     else:
+        update.message.reply_text('Я не нашел коллизий по ИНН')
         return ConversationHandler.END
 
 @close_session
